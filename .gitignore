@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+*.db
+*.db-shm
+*.db-wal
+interleave-data/
