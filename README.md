@@ -247,21 +247,28 @@ See **[`INSTRUCTIONS.md`](./INSTRUCTIONS.md)** for build, tests, and every demo 
 
 ## Scope
 
-**Deliberately cut, not built:** a fuzzed/random-schedule discovery mode that searches for unknown
-bad interleavings instead of replaying a picked one (the honest reason claim 4 — "the rare
-interleaving is the product" — stays framing, not a demonstrated claim); multi-arch verification;
-a rich scenario picker; a browser UI (the CLI comparison already tells the whole story); real
-GitHub calls; multi-node consensus or any new distributed-systems primitive. A `render` subcommand
-that wrote the comparison to a static HTML file existed at one point (built for a GitHub-Pages-hosted
-demo that this project no longer uses, now that it's submitted as a zip evaluated in a sandboxed
-Docker container) and was removed along with `docs/`, since a second, mostly-duplicate way to see
-the same output wasn't earning its keep once the reason for it went away.
+**Deliberately cut, not built:**
 
-**Simplified during implementation, not silently dropped:** the fault taxonomy names eight
-injection points along the pipeline (`pre-policy` through `pre-reconcile`), but only one —
-`downstream-ack`, where the fake adapter's own fault logic fires — is actually wired up; `--at` is
-accepted and validated for the rest. The multi-agent delegation argument above is analysis, not a
-separate fixture — `--principal` models one hop.
+- A discovery mode that fuzzes random fault/timing schedules to find *unknown* bad interleavings,
+  rather than replaying a hand-picked one — cut whole rather than half-built, which is why the
+  would-be fourth claim ("the rare interleaving is the product") stays framing, not a demonstrated
+  claim.
+- A browser UI. The side-by-side CLI comparison carries the whole argument; a UI would be polish
+  spent on the least load-bearing part.
+- Real GitHub calls. The fake downstream adapter stands in for them.
+- A rich scenario picker. `run`/`compare` execute one fixed, fully reproducible fixture.
+- Multi-arch verification, multi-node consensus, or any new distributed-systems primitive.
+
+Also removed after actually building it: a `render` subcommand that wrote the comparison to static
+HTML, originally for a GitHub-Pages-hosted demo this project no longer uses. A second, mostly
+duplicate way to read the same output wasn't earning its keep once the reason for it went away.
+
+**Simplified during implementation, not silently dropped:**
+
+- The fault taxonomy names eight injection points along the pipeline (`pre-policy` through
+  `pre-reconcile`), but only one — `downstream-ack`, where the fake adapter's own fault logic
+  fires — is wired up. `--at` is accepted and validated for the others, and is display-only.
+- The multi-agent delegation argument is analysis, not a fixture — `--principal` models one hop.
 
 ## Status
 
@@ -269,7 +276,8 @@ Core implementation done and green: SQLite-backed gateway (principal-scoped keys
 atomic revalidate+execute, ledger + near-miss watchdog, crash-safe reconciler), the naive baseline,
 the full CLI, and all 14 invariants as passing `pytest` tests (17/17: 15 tests across those 14
 rows — re-approval after expiry is a second test under "no duplicate prompts" — plus 2 mechanism
-checks). Submitted as a zip with a Dockerfile rather than a hosted demo — see `INSTRUCTIONS.md`.
+checks). Shipped as a GitHub repo with a Docker-based evaluation path rather than a hosted demo —
+see `INSTRUCTIONS.md`.
 
 ## Design rationale
 
@@ -298,8 +306,8 @@ rather than left as an unsupported fourth claim. Coverage over completeness on t
 one fully-wired injection point with a real test suite beats eight partially-stubbed ones. A CLI
 comparison over a browser UI: the side-by-side terminal output carries the whole argument, and a
 browser control (or a static HTML render of it, tried and then cut — see Scope) would have been
-polish spent on the least load-bearing part of the demo. Zip + Docker over a hosted demo: no
-dependency on the repo's visibility or any hosting availability.
+polish spent on the least load-bearing part of the demo. A clone-and-Docker repo over a hosted
+demo: nothing to keep running, nothing that can go down or 404 during review.
 
 **How I'd extend it with more time.** Build the actual discovery mode for the cut fourth claim —
 randomized fault/timing schedules searching for bad interleavings instead of a curated menu of
