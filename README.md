@@ -310,7 +310,7 @@ actual two-hop fixture (a simulated A1 regenerating its instruction to a simulat
 prose. Add a real GitHub adapter behind a feature flag so the fake downstream's assumptions get
 checked against the real API's actual idempotency behavior (or lack of it).
 
-**Time spent.** *(fill in actual hours before submitting)*
+**Time spent.** Approximately 6–7 hours.
 
 ---
 
