@@ -2,6 +2,13 @@
 
 This project runs in a sandboxed Docker container — no local Python needed at all, only Docker.
 
+**The arc, if you read top to bottom (~10–15 minutes with a terminal):** build the image → run the
+17-test suite → watch the gateway absorb a lost response → watch the naive baseline fail the same
+scenario → see both side by side in one command → kill a container mid-flight and watch the next
+one recover → let an approval expire and watch a fresh one be demanded before anything executes.
+Sections are self-contained, and every command's full output is shown and explained before you run
+it.
+
 ## Before you start: what you're about to run
 
 Picture an AI agent that needs a human's approval before it takes some real action — say, opening

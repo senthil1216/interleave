@@ -6,6 +6,23 @@ A reliability drill for agent tool-call approval.
 > if a retry cannot slip past the approval. Both of those are reliability properties, not security
 > ones.
 
+## Quickstart (Docker)
+
+```
+docker build -t interleave .
+docker run --rm interleave                                    # 17 tests, ~1s
+docker run --rm interleave interleave compare --fault lost-response --at downstream-ack --seed 17
+```
+
+That last command is the whole thesis on one screen: two implementations run through the identical
+failure — a lost response, then a differently-worded retry. The gateway coalesces the retries into
+one operation: one approval prompt, one side effect. The naive baseline prompts twice and applies
+twice, and the only thing that notices is the near-miss alarm, after the fact.
+
+If you have 15 minutes instead of 3, [`INSTRUCTIONS.md`](./INSTRUCTIONS.md) walks through this and
+four more scenarios — crash recovery, approval expiry, revocation — with every line of output
+explained.
+
 ## Why this project is needed
 
 AI agents increasingly take real-world actions — issuing a refund, deploying a service, messaging
@@ -48,12 +65,25 @@ by default.
 
 ## What this project is
 
-Not a gateway — an instrument. Pick a fault (`503`, lost-response, crash, permanent-failure) and
+Not a production gateway — an instrument. Pick a fault (`503`, lost-response, crash, permanent-failure) and
 hit run. Two implementations execute that exact scenario side by side: the naive baseline records
 two simulated pull-request side effects and prompts the human twice; the gateway records one.
 `--seed` only makes the resampled retry's wording reproducible — it does not choose the fault,
 and it is not printed back; you pass the same value in again. `--at` is accepted so the CLI's
 vocabulary matches the eight named injection points; only `downstream-ack` is wired (see Scope).
+
+The three claims, stated plainly — the [Contract](#contract) table maps each to the tests that
+prove it:
+
+1. **One intent, one operation.** Two differently-worded retries of the same action coalesce into
+   one operation under a semantic key — `(principal, tool, repo:branch)` — where both classical
+   keys (a lost UUID, a content hash) miss and create two.
+2. **Approval is dereferenced live.** A retry executes only against approval state that is still
+   true *right now* — not revoked, not expired, still policy-clean — checked in the same
+   transaction that commits to acting.
+3. **At most one side effect, no matter what.** Across retries, a lost response, and a real
+   process crash mid-flight, the effect lands exactly once — downstream ledger plus a startup
+   reconciler that adopts already-applied effects instead of re-executing them.
 
 ## Architecture
 
@@ -167,6 +197,24 @@ One-line spec so the two axes being demonstrated don't muddy each other: the top
 always naive vs. gateway; the lost-UUID/content-hash key comparisons that demonstrate claim 1 are
 a `Claim 1 evidence` block *inside* `compare` output, not a third top-level comparison.
 
+### Repository layout
+
+`src/interleave/` — the whole implementation, ~1,200 lines, no runtime dependencies:
+
+- `gateway.py` — orchestration: policy → normalize → coalesce → approve → revalidate-and-execute
+  in one transaction → ledger → terminal state
+- `store.py` — SQLite layer: operations, attempts, variants, ledger, audit trail; coalescing via a
+  UNIQUE constraint, state transitions via compare-and-set UPDATEs — no process locks
+- `normalize.py` — the semantic key itself, deliberately minimal
+- `approval.py` — approve/deny/revoke, TTL expiry, approval epochs (`fresh_authority`)
+- `reconcile.py` — startup recovery: adopt-or-retry for attempts orphaned by a crash
+- `adapter.py` — fake downstream (fault schedule) + the near-miss watchdog
+- `naive.py` — the deliberately unguarded baseline, same interface
+- `cli.py` — the `interleave` command; `retrygen.py` — the resampled-retry fixture;
+  `timeline.py` — audit-trail rendering; `policy.py`, `clock.py`, `faults.py`, `models.py`
+
+`tests/` — 17 tests, one file per concern, named after the invariants they prove.
+
 ## Contract
 
 For each logical protected action: at most one downstream side effect, at most one human approval
@@ -243,7 +291,9 @@ interleave ...` works with no install step; the evaluation path is Docker — se
 
 ## How to run
 
-See **[`INSTRUCTIONS.md`](./INSTRUCTIONS.md)** for build, tests, and every demo command.
+See **[`INSTRUCTIONS.md`](./INSTRUCTIONS.md)** — a guided, self-contained walkthrough covering
+build, tests, and every demo command, with each command's full output shown and explained before
+you run it (~10–15 minutes end to end).
 
 ## Scope
 
@@ -276,8 +326,9 @@ Core implementation done and green: SQLite-backed gateway (principal-scoped keys
 atomic revalidate+execute, ledger + near-miss watchdog, crash-safe reconciler), the naive baseline,
 the full CLI, and all 14 invariants as passing `pytest` tests (17/17: 15 tests across those 14
 rows — re-approval after expiry is a second test under "no duplicate prompts" — plus 2 mechanism
-checks). Shipped as a GitHub repo with a Docker-based evaluation path rather than a hosted demo —
-see `INSTRUCTIONS.md`.
+checks). Zero runtime dependencies — SQLite is stdlib; Python 3.11+; one image build. Shipped as
+a GitHub repo with a Docker-based evaluation path rather than a hosted demo — see
+`INSTRUCTIONS.md`.
 
 ## Design rationale
 
